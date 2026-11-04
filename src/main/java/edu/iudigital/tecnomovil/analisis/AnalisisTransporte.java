@@ -1,15 +1,19 @@
 package edu.iudigital.tecnomovil.analisis;
 
 import edu.iudigital.tecnomovil.modelo.Registro;
+import edu.iudigital.tecnomovil.modelo.Tramo;
 
 import edu.iudigital.tecnomovil.modelo.FlujoPorHora;
 import edu.iudigital.tecnomovil.modelo.UsoRuta;
 
+import java.time.Duration;
 import java.util.Comparator;
 
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 /**
  * Operaciones funcionales de análisis sobre los registros de validación.
@@ -100,6 +104,46 @@ public final class AnalisisTransporte {
                 .collect(Collectors.groupingBy(
                         Registro::idUsuario,
                         Collectors.mapping(Registro::estacion, Collectors.toUnmodifiableList()))));
+    }
+
+    /**
+     * Tiempo que tomó un usuario en recorrer un tramo, en minutos.
+     */
+    private record TiempoDeTramo(Tramo tramo, long minutos) {
+    }
+
+    /**
+     * Calcula el tiempo promedio que toman los usuarios en moverse entre
+     * estaciones consecutivas.
+     *
+     * @param registros registros de validación a analizar
+     * @return mapa inmutable con el tramo como clave y el tiempo promedio,
+     *         en minutos, como valor
+     */
+    public static Map<Tramo, Double> tiempoPromedioEntreEstaciones(List<Registro> registros) {
+        return Map.copyOf(registros.stream()
+                .collect(Collectors.groupingBy(Registro::idUsuario))
+                .values().stream()
+                .flatMap(AnalisisTransporte::tramosDeUsuario)
+                .collect(Collectors.groupingBy(
+                        TiempoDeTramo::tramo,
+                        Collectors.averagingLong(TiempoDeTramo::minutos))));
+    }
+
+    private static Stream<TiempoDeTramo> tramosDeUsuario(List<Registro> registrosDelUsuario) {
+        List<Registro> ordenados = registrosDelUsuario.stream()
+                .sorted(Comparator.comparing(Registro::timestamp))
+                .toList();
+
+        return IntStream.range(0, ordenados.size() - 1)
+                .filter(i -> ordenados.get(i).esEntrada() && ordenados.get(i + 1).esSalida())
+                .mapToObj(i -> {
+                    Registro entrada = ordenados.get(i);
+                    Registro salida = ordenados.get(i + 1);
+                    return new TiempoDeTramo(
+                            new Tramo(entrada.estacion(), salida.estacion()),
+                            Duration.between(entrada.timestamp(), salida.timestamp()).toMinutes());
+                });
     }
 
 }
