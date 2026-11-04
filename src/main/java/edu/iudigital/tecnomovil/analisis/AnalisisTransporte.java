@@ -87,4 +87,19 @@ public final class AnalisisTransporte {
                 .toList();
     }
 
+    /**
+     * Genera, para cada usuario, la lista de estaciones visitadas en el orden
+     * en que aparecen en los registros.
+     *
+     * @param registros registros de validación a analizar
+     * @return mapa inmutable con el identificador del usuario como clave y la
+     *         lista inmutable de sus estaciones como valor
+     */
+    public static Map<String, List<String>> patronesDeViaje(List<Registro> registros) {
+        return Map.copyOf(registros.stream()
+                .collect(Collectors.groupingBy(
+                        Registro::idUsuario,
+                        Collectors.mapping(Registro::estacion, Collectors.toUnmodifiableList()))));
+    }
+
 }
