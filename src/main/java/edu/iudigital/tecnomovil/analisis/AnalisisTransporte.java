@@ -3,6 +3,8 @@ package edu.iudigital.tecnomovil.analisis;
 import edu.iudigital.tecnomovil.modelo.Registro;
 
 import edu.iudigital.tecnomovil.modelo.FlujoPorHora;
+import edu.iudigital.tecnomovil.modelo.UsoRuta;
+
 import java.util.Comparator;
 
 import java.util.List;
@@ -61,6 +63,26 @@ public final class AnalisisTransporte {
     public static List<FlujoPorHora> horasPico(List<Registro> registros, int cuantas) {
         return flujoPorHora(registros).stream()
                 .sorted(Comparator.comparingLong(FlujoPorHora::flujo).reversed())
+                .limit(cuantas)
+                .toList();
+    }
+
+    /**
+     * Determina las rutas con mayor volumen de uso.
+     *
+     * @param registros registros de validación a analizar
+     * @param cuantas   cantidad de rutas a devolver
+     * @return lista inmutable con las rutas más utilizadas, de la más usada
+     *         a la menos usada; si dos rutas empatan, se ordenan por nombre
+     */
+    public static List<UsoRuta> rutasMasUtilizadas(List<Registro> registros, int cuantas) {
+        return registros.stream()
+                .filter(Registro::esEntrada)
+                .collect(Collectors.groupingBy(Registro::ruta, Collectors.counting()))
+                .entrySet().stream()
+                .map(par -> new UsoRuta(par.getKey(), par.getValue()))
+                .sorted(Comparator.comparingLong(UsoRuta::validaciones).reversed()
+                        .thenComparing(UsoRuta::ruta))
                 .limit(cuantas)
                 .toList();
     }
