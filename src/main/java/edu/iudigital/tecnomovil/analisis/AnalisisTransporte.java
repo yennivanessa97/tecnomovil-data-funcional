@@ -1,10 +1,6 @@
 package edu.iudigital.tecnomovil.analisis;
 
-import edu.iudigital.tecnomovil.modelo.Registro;
-import edu.iudigital.tecnomovil.modelo.Tramo;
-
-import edu.iudigital.tecnomovil.modelo.FlujoPorHora;
-import edu.iudigital.tecnomovil.modelo.UsoRuta;
+import edu.iudigital.tecnomovil.modelo.*;
 
 import java.time.Duration;
 import java.util.Comparator;
@@ -144,6 +140,29 @@ public final class AnalisisTransporte {
                             new Tramo(entrada.estacion(), salida.estacion()),
                             Duration.between(entrada.timestamp(), salida.timestamp()).toMinutes());
                 });
+    }
+
+    /**
+     * Detecta las rutas cuya ocupación supera un umbral y las marca como críticas.
+     *
+     * <p>La ocupación de una ruta se mide como la cantidad de entradas
+     * registradas en ella durante el día.
+     *
+     * @param registros registros de validación a analizar
+     * @param umbral    ocupación a partir de la cual una ruta es crítica
+     * @return lista inmutable de rutas críticas, de la que más excede el umbral
+     *         a la que menos; si no hay ninguna, la lista está vacía
+     */
+    public static List<RutaCritica> rutasCriticas(List<Registro> registros, long umbral) {
+        return registros.stream()
+                .filter(Registro::esEntrada)
+                .collect(Collectors.groupingBy(Registro::ruta, Collectors.counting()))
+                .entrySet().stream()
+                .filter(par -> par.getValue() > umbral)
+                .map(par -> new RutaCritica(par.getKey(), par.getValue(), umbral))
+                .sorted(Comparator.comparingDouble(RutaCritica::porcentajeSobreUmbral).reversed()
+                        .thenComparing(RutaCritica::ruta))
+                .toList();
     }
 
 }
